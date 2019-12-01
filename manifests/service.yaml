@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: storage-api
+  labels:
+    app: storage-api
+    monitor: "true"
+spec:
+  ports:
+  - port: 80
+    nodePort: 30005
+    name: web
+  selector:
+    app: storage-api
+  type: NodePort

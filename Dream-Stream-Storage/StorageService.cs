@@ -10,8 +10,8 @@ namespace Dream_Stream_Storage
     public class StorageService
     {
         private const string BasePath = "/mnt/data";
-        private static readonly ReaderWriterLockSlim Lock = new ReaderWriterLockSlim();
-        private static readonly ReaderWriterLockSlim OffsetLock = new ReaderWriterLockSlim();
+        private static readonly SemaphoreSlim Lock = new SemaphoreSlim(1, 1);
+        private static readonly SemaphoreSlim OffsetLock = new SemaphoreSlim(1, 1);
         private static readonly Dictionary<string, (Timer timer, FileStream stream)> PartitionFiles = new Dictionary<string, (Timer timer, FileStream stream)>();
 
         public async Task<long> Store(string topic, int partition, byte[] message)
@@ -36,12 +36,12 @@ namespace Dream_Stream_Storage
             if (PartitionFiles.TryGetValue(path, out var tuple))
             {
                 tuple.timer.Change(10000, Timeout.Infinite);
-                
-                Lock.EnterWriteLock();
+
+                await Lock.WaitAsync();
                 tuple.stream.Seek(0, SeekOrigin.End);
                 offset = tuple.stream.Position;
                 await tuple.stream.WriteAsync(message);
-                Lock.ExitWriteLock();
+                Lock.Release();
             }
 
             return offset;
@@ -95,14 +95,16 @@ namespace Dream_Stream_Storage
 
             var data = LZ4MessagePackSerializer.Serialize(offset);
 
-            OffsetLock.EnterWriteLock();
+            
             if (PartitionFiles.TryGetValue(path, out var stream))
             {
                 stream.timer.Change(10000, Timeout.Infinite);
+                
+                await OffsetLock.WaitAsync();
                 stream.stream.Seek(0, SeekOrigin.Begin);
                 await stream.stream.WriteAsync(data);
+                OffsetLock.Release();
             }
-            OffsetLock.ExitWriteLock();
         }
 
         public async Task<long> ReadOffset(string consumerGroup, string topic, int partition)

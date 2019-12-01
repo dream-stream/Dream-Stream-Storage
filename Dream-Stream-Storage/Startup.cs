@@ -43,6 +43,7 @@ namespace Dream_Stream_Storage
                     {
                         try
                         {
+                            Console.WriteLine("Connection made");
                             var webSocket = await context.WebSockets.AcceptWebSocketAsync();
                             await new MessageHandler().Handle(context, webSocket);
                         }

@@ -14,13 +14,22 @@ spec:
       labels:
         app: storage-api
     spec:
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      tolerations:
+        - key: kubernetes.io/arch
+          operator: Equal
+          value: amd64
+          effect: NoSchedule
       containers:
-      - name: consumer
-        image: dreamstream/dream-stream-storage:V1
+      - name: storage-api
+        image: dreamstream/dream-stream-storage:V7
         imagePullPolicy: Always
         ports:
         - containerPort: 80
         env:
+        - name: ASPNETCORE_URLS
+          value: "http://*:80"
         - name: ASPNETCORE_ENVIRONMENT
           value: "Production"
         volumeMounts:
